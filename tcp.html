@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一图流速通 FTO-TCP</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: #0d0d0d url('assets/images/background4.webp') center/cover fixed;
+    color: #e0e0e0;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+  }
+
+  .top-nav {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 0 12px;
+  }
+
+  .top-nav a {
+    color: #999;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 6px 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .top-nav a:hover { color: #ccc; border-color: rgba(255,255,255,0.2); }
+  .top-nav a.active { color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
+  .page-title {
+    text-align: center;
+    padding: 16px 0 8px;
+  }
+
+  .page-title h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.04em;
+  }
+
+  .intro {
+    max-width: 1000px;
+    margin: 0 auto 36px;
+    padding: 24px;
+    background: rgba(24, 24, 36, 0.7);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: #999;
+    line-height: 1.8;
+    backdrop-filter: blur(8px);
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .diagram-container {
+    flex: 0 0 360px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .fto-diagram {
+    max-width: 100%;
+    height: auto;
+    filter: drop-shadow(0 4px 20px rgba(255,255,255,0.1));
+    transition: transform 0.3s ease;
+  }
+  .fto-diagram:hover {
+    transform: scale(1.04);
+  }
+  .observation-guide {
+    flex: 1;
+    min-width: 260px;
+  }
+  .observation-guide h3 {
+    color: #FFD700;
+    font-size: 1.3em;
+    margin-bottom: 14px;
+    border-left: 3px solid #FFD700;
+    padding-left: 12px;
+  }
+
+  .intro p { margin-bottom: 8px; }
+  .intro p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 800px) {
+    .intro { flex-direction: column; }
+    .diagram-container { flex: 0 0 auto; max-width: 320px; margin: 0 auto; }
+  }
+
+  .dual-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .col-panel {
+    background: rgba(18, 18, 30, 0.75);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+  }
+
+  .col-header {
+    text-align: center;
+    padding: 14px 16px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+
+  .col-header.ou {
+    color: #60a5fa;
+    background: rgba(96, 165, 250, 0.08);
+    border-bottom: 1px solid rgba(96,165,250,0.15);
+  }
+
+  .col-header.ji {
+    color: #f472b6;
+    background: rgba(244, 114, 182, 0.08);
+    border-bottom: 1px solid rgba(244,114,182,0.15);
+  }
+
+  .case-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+
+  .case-row:last-child { border-bottom: none; }
+  .case-row:hover { background: rgba(255,255,255,0.03); }
+
+  .case-tag {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 10px;
+    min-width: 52px;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+
+  .ou .case-tag { color: #60a5fa; background: rgba(96, 165, 250, 0.12); }
+  .ji .case-tag { color: #f472b6; background: rgba(244, 114, 182, 0.12); }
+
+  .case-abbr {
+    flex-shrink: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    min-width: 44px;
+    text-align: center;
+    letter-spacing: 0.08em;
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  }
+
+  .ou .case-abbr { color: #60a5fa; opacity: 0.75; }
+  .ji .case-abbr { color: #f472b6; opacity: 0.75; }
+
+  .case-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+  }
+
+  .case-img {
+    width: 144px;
+    height: 144px;
+    border-radius: 8px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .case-formula {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+  }
+
+  .case-formula .auf {
+    color: #fbbf24;
+  }
+
+  .case-formula .grp {
+    color: #cbd5e1;
+  }
+
+  @media (max-width: 700px) {
+    .dual-grid { grid-template-columns: 1fr; }
+    .page-title h1 { font-size: 1.6rem; }
+    .intro { font-size: 0.82rem; padding: 16px; }
+    .case-formula { font-size: 0.78rem; white-space: normal; }
+    .case-img { width: 120px; height: 120px; }
+  }
+
+  @media (max-width: 400px) {
+    .case-row { gap: 8px; padding: 10px 12px; }
+    .case-tag { font-size: 0.7rem; padding: 2px 8px; min-width: 44px; }
+    .case-formula { font-size: 0.74rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="page-title">
+    <h1>一图流速通 FTO-TCP</h1>
+  </div>
+
+  <div class="intro">
+    <div class="diagram-container">
+      <img src="assets/images/tcp-diagram.png" alt="FTO-TCP结构示意图" class="fto-diagram">
+    </div>
+    <div class="observation-guide">
+      <h3>观察方法</h3>
+      <p>① 观察三个<span style="color:#f472b6;font-weight:600">粉色位置</span>有几个连色，三个位置都是连色或三个位置都无连色记为"偶"，只有一个位置有连色记为"奇"。</p>
+      <p>② 观察<span style="color:#f472b6;font-weight:600">粉色中心块</span>位置哪个与<span style="color:#60a5fa;font-weight:600">F面</span>同色，顶面左边位置记为"左"，顶面右边位置记为"右"，前面位置（即该中心已归位，顶面无该颜色中心）记为"无"。</p>
+      <p>③ 观察左右两边<span style="color:#60a5fa;font-weight:600">青色位置</span>，左边连色记为"左"，右边连色记为"右"，都无连色记为"无"。</p>
+      <p>依次串联三个观察点得到的记号以确定是下文哪种情况（感谢@2017SUNNO2 提供的观察方法）</p>
+    </div>
+  </div>
+
+  <div class="dual-grid">
+
+    <!-- ========== 偶 ========== -->
+    <div class="col-panel ou">
+      <div class="col-header ou">偶</div>
+
+      <div class="case-row">
+        <span class="case-tag">偶右右</span>
+        <span class="case-abbr">OYY</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OYY.png" alt="OYY">
+          <span class="case-formula"><span class="auf">{U, BR}</span> R' L R L'</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶左左</span>
+        <span class="case-abbr">OZZ</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OZZ.png" alt="OZZ">
+          <span class="case-formula"><span class="auf">{U, BR}</span> R B' R' B</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶右左</span>
+        <span class="case-abbr">OYZ</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OYZ.png" alt="OYZ">
+          <span class="case-formula"><span class="auf">{B, U}</span> U' <span class="grp">(R U R D)</span> <span class="grp">(R' U' R D')</span> R' U R'</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶左右</span>
+        <span class="case-abbr">OZY</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OZY.png" alt="OZY">
+          <span class="case-formula"><span class="auf">{B, BL}</span> U <span class="grp">(R' U' R' D')</span> <span class="grp">(R U R' D)</span> R U' R</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶右无</span>
+        <span class="case-abbr">OYW</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OYW.png" alt="OYW">
+          <span class="case-formula"><span class="auf">{B, U}</span> U' R' D <span class="grp">(R' U R D')</span> R</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶左无</span>
+        <span class="case-abbr">OZW</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OZW.png" alt="OZW">
+          <span class="case-formula"><span class="auf">{B, BL}</span> U R D' <span class="grp">(R U' R' D)</span> R'</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶无右</span>
+        <span class="case-abbr">OWY</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OWY.png" alt="OWY">
+          <span class="case-formula"><span class="auf">{R, BR}</span> <span class="grp">(R' U' R Rw U')</span> <span class="grp">(R U R' Rw U)</span></span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶无左</span>
+        <span class="case-abbr">OWZ</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OWZ.png" alt="OWZ">
+          <span class="case-formula"><span class="auf">{L, U}</span> <span class="grp">(R U R' Rw U)</span> <span class="grp">(R' U' R Rw U')</span></span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">偶无无</span>
+        <span class="case-abbr">OWW</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/OWW.png" alt="OWW">
+          <span class="case-formula"><span class="grp">(R B' R' B)</span> <span class="grp">(R' L R L')</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 奇 ========== -->
+    <div class="col-panel ji">
+      <div class="col-header ji">奇</div>
+
+      <div class="case-row">
+        <span class="case-tag">奇右右</span>
+        <span class="case-abbr">JYY</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JYY.png" alt="JYY">
+          <span class="case-formula">U <span class="auf">{B, BL}</span> R D <span class="grp">(R' U R D)</span> <span class="grp">(R U' R' D)</span> R'</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇左左</span>
+        <span class="case-abbr">JZZ</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JZZ.png" alt="JZZ">
+          <span class="case-formula">U' <span class="auf">{B, U}</span> R' D' <span class="grp">(R U' R' D')</span> <span class="grp">(R' U R D')</span> R</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇右左</span>
+        <span class="case-abbr">JYZ</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JYZ.png" alt="JYZ">
+          <span class="case-formula"><span class="auf">{L, U}</span> U' D <span class="grp">(R' U R D')</span> <span class="auf">{F, D}</span> <span class="grp">(R' L R L')</span></span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇左右</span>
+        <span class="case-abbr">JZY</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JZY.png" alt="JZY">
+          <span class="case-formula"><span class="auf">{R, BR}</span> U D' <span class="grp">(R U' R' D)</span> <span class="auf">{BR, F}</span> <span class="grp">(R B' R' B)</span></span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇右无</span>
+        <span class="case-abbr">JYW</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JYW.png" alt="JYW">
+          <span class="case-formula">U <span class="auf">{B, BL}</span> R D <span class="grp">(R' U R D')</span> R U' R</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇左无</span>
+        <span class="case-abbr">JZW</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JZW.png" alt="JZW">
+          <span class="case-formula">U' <span class="auf">{B, U}</span> R' D' <span class="grp">(R U' R' D)</span> R U R2</span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇无右</span>
+        <span class="case-abbr">JWY</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JWY.png" alt="JWY">
+          <span class="case-formula"><span class="auf">{R, BR}</span> U <span class="grp">(Rw U' R U)</span> <span class="grp">(Rw R2' U' R)</span></span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇无左</span>
+        <span class="case-abbr">JWZ</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JWZ.png" alt="JWZ">
+          <span class="case-formula"><span class="auf">{L, U}</span> U' <span class="grp">(Rw U R' U')</span> <span class="grp">(R2 Rw' U R')</span></span>
+        </div>
+      </div>
+
+      <div class="case-row">
+        <span class="case-tag">奇无无</span>
+        <span class="case-abbr">JWW</span>
+                <div class="case-cell">
+          <img class="case-img" src="assets/images/cases/JWW.png" alt="JWW">
+          <span class="case-formula"><span class="auf">{B, BR}</span> <span class="grp">(R' U' R D')</span> <span class="grp">(R U' R' D)</span> <span class="grp">(R' U' R)</span></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>
